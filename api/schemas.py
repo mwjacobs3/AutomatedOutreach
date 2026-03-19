@@ -1,44 +1,13 @@
 """Pydantic models for API request/response validation."""
 
 from pydantic import BaseModel
-from typing import Optional
 
 
 class ProspectRequest(BaseModel):
-    """Input schema — mirrors the Prospect dataclass fields."""
+    """Input schema — just two URLs, the AI does the rest."""
 
-    # Contact basics (required)
-    first_name: str
-    last_name: str
-    email: str
-    title: str
-    company_name: str
-
-    # LinkedIn profile context (user pastes text)
-    linkedin_url: Optional[str] = None
-    linkedin_summary: Optional[str] = None
-    years_experience: Optional[str] = None
-    recent_activity: Optional[str] = None
-
-    # Company context (user pastes text)
-    company_url: Optional[str] = None
-    company_linkedin_url: Optional[str] = None
-    industry: Optional[str] = None
-    company_size: Optional[str] = None
-    company_description: Optional[str] = None
-    tech_stack: Optional[str] = None
-    recent_company_news: Optional[str] = None
-
-    # Pain points / triggers
-    pain_points: list[str] = []
-    trigger_event: Optional[str] = None
-
-    # Sender context
-    sender_name: str = ""
-    sender_title: str = ""
-    sender_company: str = ""
-    sender_email: str = ""
-    calendar_link: Optional[str] = None
+    linkedin_url: str
+    company_url: str
 
 
 class GeneratedEmailResponse(BaseModel):
