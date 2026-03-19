@@ -1,0 +1,29 @@
+{
+  "first_name": "Sarah",
+  "last_name": "Chen",
+  "email": "sarah.chen@example.com",
+  "title": "VP of Finance",
+  "company_name": "GrowthCo Industries",
+  "linkedin_url": "https://linkedin.com/in/sarahchen",
+  "linkedin_summary": "Finance leader with 15+ years in scaling operations for mid-market manufacturing companies. Passionate about digital transformation and process automation.",
+  "years_experience": "15 years",
+  "recent_activity": "Recently posted about challenges with month-end close taking too long",
+  "company_url": "https://growthco.example.com",
+  "company_linkedin_url": "https://linkedin.com/company/growthco",
+  "industry": "Manufacturing",
+  "company_size": "200-500 employees",
+  "company_description": "Mid-market manufacturer of industrial equipment, expanding into 3 new regions this year",
+  "tech_stack": "QuickBooks Enterprise, Excel spreadsheets for reporting",
+  "recent_company_news": "Just closed a $30M Series C, planning to double headcount",
+  "pain_points": [
+    "Manual financial consolidation across entities",
+    "No real-time inventory visibility",
+    "Month-end close takes 15+ days"
+  ],
+  "trigger_event": "Series C funding and multi-entity expansion",
+  "sender_name": "Mike Jacobs",
+  "sender_title": "NetSuite Solutions Consultant",
+  "sender_company": "NetSuite Advisory Group",
+  "sender_email": "mike@example.com",
+  "calendar_link": "https://calendly.com/mike-netsuite"
+}
