@@ -17,7 +17,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>AutomatedOutreach</h1>
-        <p>Generate personalized email cadences for NetSuite prospects</p>
+        <p>Generate personalized outreach emails for NetSuite prospects</p>
       </header>
 
       <main className="app-main">

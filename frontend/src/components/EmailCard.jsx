@@ -10,13 +10,19 @@ const DAY_LABELS = {
 }
 
 export default function EmailCard({ email }) {
-  const [copied, setCopied] = useState(false)
+  const [copiedSubject, setCopiedSubject] = useState(false)
+  const [copiedBody, setCopiedBody] = useState(false)
 
-  const handleCopy = async () => {
-    const text = `Subject: ${email.subject}\n\n${email.body}`
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopySubject = async () => {
+    await navigator.clipboard.writeText(email.subject)
+    setCopiedSubject(true)
+    setTimeout(() => setCopiedSubject(false), 2000)
+  }
+
+  const handleCopyBody = async () => {
+    await navigator.clipboard.writeText(email.body)
+    setCopiedBody(true)
+    setTimeout(() => setCopiedBody(false), 2000)
   }
 
   return (
@@ -25,14 +31,19 @@ export default function EmailCard({ email }) {
         <span className="email-number">Email {email.sequence_number}</span>
         <span className="email-day">{DAY_LABELS[email.send_day] || `Day ${email.send_day}`}</span>
         <span className="email-purpose">{email.purpose}</span>
-        <button className="copy-btn" onClick={handleCopy}>
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
       </div>
       <div className="email-subject">
-        <strong>Subject:</strong> {email.subject}
+        <div className="email-field-row">
+          <strong>Subject:</strong> {email.subject}
+          <button className="copy-btn" onClick={handleCopySubject}>
+            {copiedSubject ? 'Copied!' : 'Copy Subject'}
+          </button>
+        </div>
       </div>
       <div className="email-body">{email.body}</div>
+      <button className="copy-btn copy-body-btn" onClick={handleCopyBody}>
+        {copiedBody ? 'Copied!' : 'Copy Email Body'}
+      </button>
     </div>
   )
 }

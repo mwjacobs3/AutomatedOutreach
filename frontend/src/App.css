@@ -260,10 +260,36 @@ body {
   font-size: 0.9rem;
 }
 
+.email-field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .email-body {
   padding: 1rem;
   font-size: 0.9rem;
   white-space: pre-wrap;
   line-height: 1.7;
   color: #374151;
+}
+
+.copy-body-btn {
+  display: block;
+  width: calc(100% - 2rem);
+  margin: 0 1rem 1rem;
+  padding: 0.5rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.copy-body-btn:hover {
+  background: #1d4ed8;
 }

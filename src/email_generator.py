@@ -164,8 +164,7 @@ Return ONLY the JSON array, no other text."""
 def generate_email_sequence_from_urls(linkedin_url: str, company_url: str, api_key: str) -> dict:
     """Generate a 6-email sequence given only a LinkedIn URL and company website URL.
 
-    Claude will research/infer the prospect's details from the URLs and generate
-    the full email cadence in a single call.
+    Claude infers prospect details from the URLs and generates the full cadence.
     """
 
     client = anthropic.Anthropic(api_key=api_key)
@@ -176,13 +175,12 @@ Here are the only two inputs I have:
 - LinkedIn Profile URL: {linkedin_url}
 - Company Website URL: {company_url}
 
-STEP 1: Based on the LinkedIn URL and company website URL, infer as much as you can about:
-- The prospect's name, title, and role
-- The company name, industry, size, and what they do
+Based on the URLs, infer what you can about:
+- The prospect's name, title, and role (extract from LinkedIn slug)
+- The company name, industry, size, and what they do (extract from domain)
 - Likely pain points that NetSuite could solve for this type of company/role
-- Any relevant context you can determine from the URL patterns (company name from domain, person's name from LinkedIn slug, etc.)
 
-STEP 2: Using your research, generate a personalized 6-email outreach sequence.
+Then generate a personalized 6-email outreach sequence.
 
 Return your response as a JSON object with this exact structure:
 {{
@@ -193,7 +191,7 @@ Return your response as a JSON object with this exact structure:
       "sequence_number": 1,
       "send_day": 1,
       "subject": "subject line here",
-      "body": "email body here (use \\n for line breaks)",
+      "body": "Full email body here. Use actual line breaks for paragraphs.",
       "purpose": "Relevant Opener"
     }},
     ... (6 emails total with send_days: 1, 3, 7, 10, 14, 21)
