@@ -4,5 +4,8 @@ __pycache__/
 .venv/
 venv/
 data/prospects/*.json
+data/cadences/
+data/drafts/
 node_modules/
 frontend/dist/
+.streamlit/secrets.toml
