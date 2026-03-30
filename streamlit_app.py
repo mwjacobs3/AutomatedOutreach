@@ -104,22 +104,68 @@ RULES:
 """
 
 
-def generate_sequence(linkedin_url: str, company_url: str, api_key: str) -> dict:
-    """Generate a 6-email personalized touch plan from two URLs."""
+def generate_sequence(
+    linkedin_url: str,
+    company_url: str,
+    api_key: str,
+    industry: str = "",
+    company_size: str = "",
+    prospect_role: str = "",
+    current_system: str = "",
+    pain_point: str = "",
+    trigger_event: str = "",
+    tone: str = "Conversational",
+    sender_name: str = "",
+    sender_title: str = "",
+    sender_company: str = "",
+    sender_email: str = "",
+) -> dict:
+    """Generate a 6-email personalized touch plan with context parameters."""
     client = anthropic.Anthropic(api_key=api_key)
+
+    # Build context block from parameters
+    context_lines = []
+    if industry and industry != "Auto-detect from website":
+        context_lines.append(f"- Industry: {industry}")
+    if company_size and company_size != "Auto-detect":
+        context_lines.append(f"- Company size: {company_size}")
+    if prospect_role and prospect_role != "Auto-detect from LinkedIn":
+        context_lines.append(f"- Prospect's role/persona: {prospect_role}")
+    if current_system and current_system != "Unknown":
+        context_lines.append(f"- Current ERP/accounting system: {current_system}")
+    if pain_point and pain_point != "Auto-detect":
+        context_lines.append(f"- Primary pain point to focus on: {pain_point}")
+    if trigger_event and trigger_event != "None":
+        context_lines.append(f"- Recent trigger event: {trigger_event}")
+
+    context_block = ""
+    if context_lines:
+        context_block = "\n\nADDITIONAL CONTEXT (use this to sharpen personalization):\n" + "\n".join(context_lines)
+
+    tone_instruction = ""
+    if tone and tone != "Conversational":
+        tone_instruction = f"\n\nTONE: Write in a {tone.lower()} tone throughout all emails."
+
+    sender_block = ""
+    if sender_name:
+        sig_parts = [sender_name]
+        if sender_title:
+            sig_parts.append(sender_title)
+        if sender_company:
+            sig_parts.append(sender_company)
+        if sender_email:
+            sig_parts.append(sender_email)
+        sender_block = "\n\nSENDER SIGNATURE (use this in every email):\n" + "\n".join(sig_parts)
 
     user_prompt = f"""I need you to generate a 6-email NetSuite outreach sequence for a prospect.
 
-Here are the only two inputs I have:
+PROSPECT INPUTS:
 - LinkedIn Profile URL: {linkedin_url}
 - Company Website URL: {company_url}
 
-Based on the URLs, infer what you can about:
-- The prospect's name, title, and role (extract from LinkedIn slug)
-- The company name, industry, size, and what they do (extract from domain)
-- Likely pain points that NetSuite could solve for this type of company/role
+Based on the URLs, infer what you can about the prospect's name, title, role, company name, industry, and what they do.{context_block}{tone_instruction}{sender_block}
 
-Then generate a personalized 6-email outreach sequence.
+Generate a personalized 6-email outreach sequence that feels specific to THIS person and company.
 
 Return your response as a JSON object with this exact structure:
 {{
@@ -233,27 +279,153 @@ sb = get_supabase_client()
 
 # --- Input form ---
 with st.form("prospect_form"):
+    st.markdown("#### Prospect")
     col1, col2 = st.columns(2)
     with col1:
         linkedin_url = st.text_input(
-            "LinkedIn Profile URL",
+            "LinkedIn Profile URL *",
             placeholder="https://linkedin.com/in/jane-doe",
         )
     with col2:
         company_url = st.text_input(
-            "Company Website URL",
+            "Company Website URL *",
             placeholder="https://acmecorp.com",
         )
+
+    st.markdown("#### Targeting Parameters")
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        industry = st.selectbox("Industry", [
+            "Auto-detect from website",
+            "Manufacturing",
+            "Wholesale & Distribution",
+            "Retail & E-Commerce",
+            "Software & Technology",
+            "Professional Services",
+            "Financial Services",
+            "Healthcare & Life Sciences",
+            "Food & Beverage",
+            "Nonprofit",
+            "Media & Publishing",
+            "Energy & Utilities",
+            "Construction & Real Estate",
+            "Transportation & Logistics",
+            "Education",
+            "Other",
+        ])
+    with col4:
+        company_size = st.selectbox("Company Size", [
+            "Auto-detect",
+            "Startup (1-50)",
+            "Small Business (51-200)",
+            "Mid-Market (201-1,000)",
+            "Upper Mid-Market (1,001-5,000)",
+            "Enterprise (5,000+)",
+        ])
+    with col5:
+        prospect_role = st.selectbox("Prospect Role", [
+            "Auto-detect from LinkedIn",
+            "CFO / VP Finance",
+            "Controller / Accounting Manager",
+            "CIO / IT Director",
+            "COO / VP Operations",
+            "CEO / Founder / Owner",
+            "Director of Supply Chain",
+            "VP of Sales / Revenue Ops",
+            "Procurement / Purchasing Manager",
+        ])
+
+    col6, col7, col8 = st.columns(3)
+    with col6:
+        current_system = st.selectbox("Current System", [
+            "Unknown",
+            "QuickBooks",
+            "Sage (Intacct / 100 / 300)",
+            "SAP Business One / ByDesign",
+            "Microsoft Dynamics (GP / NAV / 365 BC)",
+            "Acumatica",
+            "Epicor",
+            "Infor",
+            "Spreadsheets / Manual Processes",
+            "Custom / Legacy System",
+            "Other",
+        ])
+    with col7:
+        pain_point = st.selectbox("Primary Pain Point", [
+            "Auto-detect",
+            "Manual processes & data entry",
+            "Lack of real-time financial visibility",
+            "Scaling beyond current system",
+            "Multi-entity / multi-currency complexity",
+            "Disconnected systems (ERP, CRM, e-commerce)",
+            "Compliance & audit readiness",
+            "Inventory & supply chain management",
+            "Revenue recognition challenges",
+            "Slow month-end close",
+            "Outgrowing QuickBooks",
+        ])
+    with col8:
+        trigger_event = st.selectbox("Trigger Event", [
+            "None",
+            "Recent funding round",
+            "New CFO / Finance hire",
+            "Acquisition or merger",
+            "IPO preparation",
+            "Rapid headcount growth",
+            "New product line / expansion",
+            "Compliance deadline approaching",
+            "Current vendor contract renewal",
+            "Recent negative Glassdoor / press about ops",
+        ])
+
+    st.markdown("#### Tone & Sender")
+    col9, col10 = st.columns(2)
+    with col9:
+        tone = st.selectbox("Email Tone", [
+            "Conversational",
+            "Professional / Formal",
+            "Casual / Friendly",
+            "Executive / Direct",
+            "Consultative / Advisory",
+        ])
+    with col10:
+        st.caption("Sender info appears in the email signature")
+
+    col11, col12, col13, col14 = st.columns(4)
+    with col11:
+        sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
+    with col12:
+        sender_title = st.text_input("Your Title", placeholder="Account Executive")
+    with col13:
+        sender_company = st.text_input("Your Company", placeholder="NetSuite")
+    with col14:
+        sender_email = st.text_input("Your Email", placeholder="mjacobs@netsuite.com")
+
     submitted = st.form_submit_button("Generate Touch Plan", type="primary")
 
 # --- Generation ---
 if submitted:
     if not linkedin_url or not company_url:
-        st.error("Please fill in both fields.")
+        st.error("Please fill in both the LinkedIn URL and Company Website URL.")
     else:
         with st.spinner("Generating your personalized 6-email touch plan..."):
             try:
-                result = generate_sequence(linkedin_url, company_url, api_key)
+                result = generate_sequence(
+                    linkedin_url=linkedin_url,
+                    company_url=company_url,
+                    api_key=api_key,
+                    industry=industry,
+                    company_size=company_size,
+                    prospect_role=prospect_role,
+                    current_system=current_system,
+                    pain_point=pain_point,
+                    trigger_event=trigger_event,
+                    tone=tone,
+                    sender_name=sender_name,
+                    sender_title=sender_title,
+                    sender_company=sender_company,
+                    sender_email=sender_email,
+                )
                 st.session_state["result"] = result
                 st.session_state["linkedin_url"] = linkedin_url
                 st.session_state["company_url"] = company_url
