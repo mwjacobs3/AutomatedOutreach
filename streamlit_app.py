@@ -269,10 +269,8 @@ st.markdown("Generate a personalized 6-email NetSuite touch plan from just a Lin
 # --- API key handling ---
 api_key = st.secrets.get("ANTHROPIC_API_KEY", os.environ.get("ANTHROPIC_API_KEY", ""))
 if not api_key:
-    api_key = st.sidebar.text_input("Anthropic API Key", type="password", help="Required to generate sequences")
-    if not api_key:
-        st.info("Enter your Anthropic API key in the sidebar to get started.")
-        st.stop()
+    st.error("Anthropic API key not configured. Please add it to Streamlit secrets.")
+    st.stop()
 
 # --- Supabase client ---
 sb = get_supabase_client()
