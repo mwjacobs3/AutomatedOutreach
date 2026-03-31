@@ -6,6 +6,8 @@ import os
 import anthropic
 import streamlit as st
 
+from src.email_generator import parse_name_from_linkedin_url
+
 # --- Optional Supabase integration ---
 try:
     from supabase import create_client
@@ -157,13 +159,22 @@ def generate_sequence(
             sig_parts.append(sender_email)
         sender_block = "\n\nSENDER SIGNATURE (use this in every email):\n" + "\n".join(sig_parts)
 
+    parsed_name = parse_name_from_linkedin_url(linkedin_url)
+    name_instruction = (
+        f'The prospect\'s name is "{parsed_name}". Use this exact name in all emails.'
+        if parsed_name
+        else "The prospect's name could not be determined from the URL. Use the LinkedIn slug to infer it as best you can."
+    )
+
     user_prompt = f"""I need you to generate a 6-email NetSuite outreach sequence for a prospect.
 
 PROSPECT INPUTS:
 - LinkedIn Profile URL: {linkedin_url}
 - Company Website URL: {company_url}
 
-Based on the URLs, infer what you can about the prospect's name, title, role, company name, industry, and what they do.{context_block}{tone_instruction}{sender_block}
+{name_instruction}
+
+Based on the URLs, infer what you can about the prospect's title, role, company name, industry, and what they do.{context_block}{tone_instruction}{sender_block}
 
 Generate a personalized 6-email outreach sequence that feels specific to THIS person and company.
 

@@ -1,11 +1,52 @@
 """AI-powered email sequence generator using Claude API."""
 
 import json
+import re
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 import anthropic
 
 from .prospect import Prospect
+
+
+def parse_name_from_linkedin_url(linkedin_url: str) -> str:
+    """Extract a human-readable name from a LinkedIn profile URL slug.
+
+    Handles common slug formats like:
+      - linkedin.com/in/jane-doe
+      - linkedin.com/in/jane-doe-a1b2c3
+      - linkedin.com/in/jane-doe-cfo-123456
+    Returns a title-cased name string, or empty string if parsing fails.
+    """
+    try:
+        path = urlparse(linkedin_url).path
+        # Extract the slug after /in/
+        match = re.search(r"/in/([^/]+)", path)
+        if not match:
+            return ""
+        slug = match.group(1).lower().strip()
+
+        parts = slug.split("-")
+
+        # Remove trailing segments that look like LinkedIn's random suffixes
+        # (hex-like strings, pure digits, or single characters at the end)
+        while len(parts) > 1 and re.match(r"^[0-9a-f]{4,}$|^\d+$|^[a-z]$", parts[-1]):
+            parts.pop()
+
+        # Take only the first 2-3 parts as the name (first, middle/last, last)
+        # to avoid picking up titles or qualifiers embedded in the slug
+        name_parts = parts[:3] if len(parts) >= 3 else parts
+
+        # Drop any remaining part that is a single character or all digits
+        name_parts = [p for p in name_parts if len(p) > 1 and not p.isdigit()]
+
+        if not name_parts:
+            return ""
+
+        return " ".join(p.capitalize() for p in name_parts)
+    except Exception:
+        return ""
 
 SEQUENCE_STRATEGY = """You are an expert B2B sales copywriter specializing in NetSuite ERP outreach.
 You write emails that are short, direct, personalized, and feel like they came from a real human — not a template.
@@ -169,14 +210,23 @@ def generate_email_sequence_from_urls(linkedin_url: str, company_url: str, api_k
 
     client = anthropic.Anthropic(api_key=api_key)
 
+    parsed_name = parse_name_from_linkedin_url(linkedin_url)
+    name_instruction = (
+        f'The prospect\'s name is "{parsed_name}". Use this exact name in all emails.'
+        if parsed_name
+        else "The prospect's name could not be determined from the URL. Use the LinkedIn slug to infer it as best you can."
+    )
+
     user_prompt = f"""I need you to generate a 6-email NetSuite outreach sequence for a prospect.
 
 Here are the only two inputs I have:
 - LinkedIn Profile URL: {linkedin_url}
 - Company Website URL: {company_url}
 
+{name_instruction}
+
 Based on the URLs, infer what you can about:
-- The prospect's name, title, and role (extract from LinkedIn slug)
+- The prospect's title and role
 - The company name, industry, size, and what they do (extract from domain)
 - Likely pain points that NetSuite could solve for this type of company/role
 

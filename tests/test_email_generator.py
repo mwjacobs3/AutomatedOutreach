@@ -7,6 +7,7 @@ from src.prospect import Prospect
 from src.email_generator import (
     generate_email_sequence,
     generate_email_sequence_from_urls,
+    parse_name_from_linkedin_url,
     GeneratedEmail,
     EmailSequence,
 )
@@ -164,6 +165,37 @@ class TestGenerateEmailSequence:
         assert "Email 6" in display
 
 
+class TestParseNameFromLinkedInUrl:
+    def test_simple_slug(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/in/john-smith") == "John Smith"
+
+    def test_slug_with_hex_suffix(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/in/john-smith-a1b2c3d4") == "John Smith"
+
+    def test_slug_with_numeric_suffix(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/in/jane-doe-123456") == "Jane Doe"
+
+    def test_three_part_name(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/in/mary-jane-watson") == "Mary Jane Watson"
+
+    def test_slug_with_trailing_slash(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/in/john-smith/") == "John Smith"
+
+    def test_no_in_path(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/company/acme") == ""
+
+    def test_empty_string(self):
+        assert parse_name_from_linkedin_url("") == ""
+
+    def test_slug_with_multiple_hex_suffixes(self):
+        assert parse_name_from_linkedin_url("https://linkedin.com/in/sarah-chen-ab12-cd34") == "Sarah Chen"
+
+    def test_single_name_slug(self):
+        # Single name slugs with a hex suffix should return the name
+        result = parse_name_from_linkedin_url("https://linkedin.com/in/madonna-1a2b3c")
+        assert result == "Madonna"
+
+
 class TestGenerateEmailSequenceFromUrls:
     @patch("src.email_generator.anthropic.Anthropic")
     def test_returns_prospect_and_emails(self, mock_anthropic_cls):
@@ -197,6 +229,22 @@ class TestGenerateEmailSequenceFromUrls:
         user_msg = call_args.kwargs["messages"][0]["content"]
         assert "https://linkedin.com/in/jane-doe-cfo" in user_msg
         assert "https://bigcorp.com" in user_msg
+
+    @patch("src.email_generator.anthropic.Anthropic")
+    def test_parsed_name_included_in_prompt(self, mock_anthropic_cls):
+        mock_client = MagicMock()
+        mock_anthropic_cls.return_value = mock_client
+        mock_client.messages.create.return_value = _mock_claude_response(MOCK_URL_RESPONSE_JSON)
+
+        generate_email_sequence_from_urls(
+            linkedin_url="https://linkedin.com/in/john-smith-abc123",
+            company_url="https://acmecorp.com",
+            api_key="test-key",
+        )
+
+        call_args = mock_client.messages.create.call_args
+        user_msg = call_args.kwargs["messages"][0]["content"]
+        assert 'The prospect\'s name is "John Smith"' in user_msg
 
     @patch("src.email_generator.anthropic.Anthropic")
     def test_handles_markdown_fenced_json(self, mock_anthropic_cls):
