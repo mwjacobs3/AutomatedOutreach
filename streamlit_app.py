@@ -277,7 +277,14 @@ sb = get_supabase_client()
 
 # --- Input form ---
 with st.form("prospect_form"):
-    st.markdown("#### Prospect")
+    # ── Primary box: required fields ──
+    st.markdown(
+        """<div style="background:#fff;border:1.5px solid #d1d5db;border-radius:12px;
+        padding:1.5rem;margin-bottom:0.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+        <p style="font-weight:600;font-size:1.05rem;margin-bottom:0.75rem;color:#374151">
+        Prospect Info</p></div>""",
+        unsafe_allow_html=True,
+    )
     col1, col2 = st.columns(2)
     with col1:
         linkedin_url = st.text_input(
@@ -290,114 +297,118 @@ with st.form("prospect_form"):
             placeholder="https://acmecorp.com",
         )
 
-    st.markdown("#### Targeting Parameters")
-    col3, col4, col5 = st.columns(3)
-    with col3:
-        industry = st.selectbox("Industry", [
-            "Auto-detect from website",
-            "Manufacturing",
-            "Wholesale & Distribution",
-            "Retail & E-Commerce",
-            "Software & Technology",
-            "Professional Services",
-            "Financial Services",
-            "Healthcare & Life Sciences",
-            "Food & Beverage",
-            "Nonprofit",
-            "Media & Publishing",
-            "Energy & Utilities",
-            "Construction & Real Estate",
-            "Transportation & Logistics",
-            "Education",
-            "Other",
-        ])
-    with col4:
-        company_size = st.selectbox("Company Size", [
-            "Auto-detect",
-            "Startup (1-50)",
-            "Small Business (51-200)",
-            "Mid-Market (201-1,000)",
-            "Upper Mid-Market (1,001-5,000)",
-            "Enterprise (5,000+)",
-        ])
-    with col5:
-        prospect_role = st.selectbox("Prospect Role", [
-            "Auto-detect from LinkedIn",
-            "CFO / VP Finance",
-            "Controller / Accounting Manager",
-            "CIO / IT Director",
-            "COO / VP Operations",
-            "CEO / Founder / Owner",
-            "Director of Supply Chain",
-            "VP of Sales / Revenue Ops",
-            "Procurement / Purchasing Manager",
-        ])
+    st.markdown("")  # spacer
 
-    col6, col7, col8 = st.columns(3)
-    with col6:
-        current_system = st.selectbox("Current System", [
-            "Unknown",
-            "QuickBooks",
-            "Sage (Intacct / 100 / 300)",
-            "SAP Business One / ByDesign",
-            "Microsoft Dynamics (GP / NAV / 365 BC)",
-            "Acumatica",
-            "Epicor",
-            "Infor",
-            "Spreadsheets / Manual Processes",
-            "Custom / Legacy System",
-            "Other",
-        ])
-    with col7:
-        pain_point = st.selectbox("Primary Pain Point", [
-            "Auto-detect",
-            "Manual processes & data entry",
-            "Lack of real-time financial visibility",
-            "Scaling beyond current system",
-            "Multi-entity / multi-currency complexity",
-            "Disconnected systems (ERP, CRM, e-commerce)",
-            "Compliance & audit readiness",
-            "Inventory & supply chain management",
-            "Revenue recognition challenges",
-            "Slow month-end close",
-            "Outgrowing QuickBooks",
-        ])
-    with col8:
-        trigger_event = st.selectbox("Trigger Event", [
-            "None",
-            "Recent funding round",
-            "New CFO / Finance hire",
-            "Acquisition or merger",
-            "IPO preparation",
-            "Rapid headcount growth",
-            "New product line / expansion",
-            "Compliance deadline approaching",
-            "Current vendor contract renewal",
-            "Recent negative Glassdoor / press about ops",
-        ])
+    # ── Optional: Personalization Options ──
+    with st.expander("Personalization Options  *(optional — increase targeting accuracy)*"):
+        st.markdown("##### Targeting Parameters")
+        col3, col4, col5 = st.columns(3)
+        with col3:
+            industry = st.selectbox("Industry", [
+                "Auto-detect from website",
+                "Manufacturing",
+                "Wholesale & Distribution",
+                "Retail & E-Commerce",
+                "Software & Technology",
+                "Professional Services",
+                "Financial Services",
+                "Healthcare & Life Sciences",
+                "Food & Beverage",
+                "Nonprofit",
+                "Media & Publishing",
+                "Energy & Utilities",
+                "Construction & Real Estate",
+                "Transportation & Logistics",
+                "Education",
+                "Other",
+            ])
+        with col4:
+            company_size = st.selectbox("Company Size", [
+                "Auto-detect",
+                "Startup (1-50)",
+                "Small Business (51-200)",
+                "Mid-Market (201-1,000)",
+                "Upper Mid-Market (1,001-5,000)",
+                "Enterprise (5,000+)",
+            ])
+        with col5:
+            prospect_role = st.selectbox("Prospect Role", [
+                "Auto-detect from LinkedIn",
+                "CFO / VP Finance",
+                "Controller / Accounting Manager",
+                "CIO / IT Director",
+                "COO / VP Operations",
+                "CEO / Founder / Owner",
+                "Director of Supply Chain",
+                "VP of Sales / Revenue Ops",
+                "Procurement / Purchasing Manager",
+            ])
 
-    st.markdown("#### Tone & Sender")
-    col9, col10 = st.columns(2)
-    with col9:
-        tone = st.selectbox("Email Tone", [
-            "Conversational",
-            "Professional / Formal",
-            "Casual / Friendly",
-            "Executive / Direct",
-            "Consultative / Advisory",
-        ])
-    with col10:
-        st.caption("Sender info appears in the email signature")
+        col6, col7, col8 = st.columns(3)
+        with col6:
+            current_system = st.selectbox("Current System", [
+                "Unknown",
+                "QuickBooks",
+                "Sage (Intacct / 100 / 300)",
+                "SAP Business One / ByDesign",
+                "Microsoft Dynamics (GP / NAV / 365 BC)",
+                "Acumatica",
+                "Epicor",
+                "Infor",
+                "Spreadsheets / Manual Processes",
+                "Custom / Legacy System",
+                "Other",
+            ])
+        with col7:
+            pain_point = st.selectbox("Primary Pain Point", [
+                "Auto-detect",
+                "Manual processes & data entry",
+                "Lack of real-time financial visibility",
+                "Scaling beyond current system",
+                "Multi-entity / multi-currency complexity",
+                "Disconnected systems (ERP, CRM, e-commerce)",
+                "Compliance & audit readiness",
+                "Inventory & supply chain management",
+                "Revenue recognition challenges",
+                "Slow month-end close",
+                "Outgrowing QuickBooks",
+            ])
+        with col8:
+            trigger_event = st.selectbox("Trigger Event", [
+                "None",
+                "Recent funding round",
+                "New CFO / Finance hire",
+                "Acquisition or merger",
+                "IPO preparation",
+                "Rapid headcount growth",
+                "New product line / expansion",
+                "Compliance deadline approaching",
+                "Current vendor contract renewal",
+                "Recent negative Glassdoor / press about ops",
+            ])
 
-    col11, col12, col13, col14 = st.columns(4)
-    with col11:
-        sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
-    with col12:
-        sender_title = st.text_input("Your Title", placeholder="Account Executive")
-    with col13:
-        sender_company = st.text_input("Your Company", placeholder="NetSuite")
-    with col14:
-        sender_email = st.text_input("Your Email", placeholder="mjacobs@netsuite.com")
+        st.markdown("##### Tone & Sender")
+        col9, col10 = st.columns(2)
+        with col9:
+            tone = st.selectbox("Email Tone", [
+                "Conversational",
+                "Professional / Formal",
+                "Casual / Friendly",
+                "Executive / Direct",
+                "Consultative / Advisory",
+            ])
+        with col10:
+            st.caption("Sender info appears in the email signature")
+
+        col11, col12, col13, col14 = st.columns(4)
+        with col11:
+            sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
+        with col12:
+            sender_title = st.text_input("Your Title", placeholder="Account Executive")
+        with col13:
+            sender_company = st.text_input("Your Company", placeholder="NetSuite")
+        with col14:
+            sender_email = st.text_input("Your Email", placeholder="mjacobs@netsuite.com")
 
     submitted = st.form_submit_button("Generate Touch Plan", type="primary")
 
