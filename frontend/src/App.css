@@ -101,6 +101,15 @@ body {
   background: #fff;
 }
 
+.prospect-form .required-fields {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
 .prospect-form legend {
   font-weight: 600;
   font-size: 0.95rem;
@@ -117,7 +126,8 @@ body {
 }
 
 .prospect-form input,
-.prospect-form textarea {
+.prospect-form textarea,
+.prospect-form select {
   display: block;
   width: 100%;
   margin-top: 0.25rem;
@@ -127,10 +137,12 @@ body {
   font-size: 0.9rem;
   font-family: inherit;
   transition: border-color 0.15s;
+  background: #fff;
 }
 
 .prospect-form input:focus,
-.prospect-form textarea:focus {
+.prospect-form textarea:focus,
+.prospect-form select:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -138,6 +150,67 @@ body {
 
 .prospect-form textarea {
   resize: vertical;
+}
+
+/* Optional personalization section */
+.optional-section {
+  margin-bottom: 1.25rem;
+}
+
+.optional-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.optional-toggle:hover {
+  background: #f3f4f6;
+}
+
+.toggle-arrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  color: #9ca3af;
+}
+
+.toggle-arrow.open {
+  transform: rotate(90deg);
+}
+
+.optional-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.optional-fields {
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.optional-fields label:last-child {
+  margin-bottom: 0;
 }
 
 .form-row {

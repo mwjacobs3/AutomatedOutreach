@@ -1,13 +1,19 @@
 """Pydantic models for API request/response validation."""
 
+from typing import Optional
+
 from pydantic import BaseModel
 
 
 class ProspectRequest(BaseModel):
-    """Input schema — just two URLs, the AI does the rest."""
+    """Input schema — two required URLs plus optional personalization."""
 
     linkedin_url: str
     company_url: str
+    pain_points: Optional[str] = None
+    tone: Optional[str] = None
+    call_to_action: Optional[str] = None
+    additional_context: Optional[str] = None
 
 
 class GeneratedEmailResponse(BaseModel):
