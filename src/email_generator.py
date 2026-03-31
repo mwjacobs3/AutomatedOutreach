@@ -7,7 +7,26 @@ from urllib.parse import urlparse
 
 import anthropic
 
+from .linkedin_enrichment import LinkedInProfile, fetch_linkedin_profile
 from .prospect import Prospect
+
+
+def _build_profile_context(profile: LinkedInProfile) -> str:
+    """Format a LinkedInProfile into a context block for the AI prompt."""
+    lines = [f"- Full name: {profile.full_name}"]
+    if profile.current_title:
+        lines.append(f"- Current title: {profile.current_title}")
+    if profile.current_company:
+        lines.append(f"- Current company: {profile.current_company}")
+    if profile.headline:
+        lines.append(f"- Headline: {profile.headline}")
+    if profile.summary:
+        lines.append(f"- Summary: {profile.summary}")
+    if profile.industry:
+        lines.append(f"- Industry: {profile.industry}")
+    if profile.city and profile.country:
+        lines.append(f"- Location: {profile.city}, {profile.country}")
+    return "\n".join(lines)
 
 
 def parse_name_from_linkedin_url(linkedin_url: str) -> str:
@@ -202,33 +221,47 @@ Return ONLY the JSON array, no other text."""
     return EmailSequence(prospect=prospect, emails=emails)
 
 
-def generate_email_sequence_from_urls(linkedin_url: str, company_url: str, api_key: str) -> dict:
+def generate_email_sequence_from_urls(
+    linkedin_url: str,
+    company_url: str,
+    api_key: str,
+    proxycurl_api_key: str = "",
+) -> dict:
     """Generate a 6-email sequence given only a LinkedIn URL and company website URL.
 
-    Claude infers prospect details from the URLs and generates the full cadence.
+    If a Proxycurl API key is provided, fetches real profile data from LinkedIn.
+    Otherwise falls back to parsing the name from the URL slug.
     """
 
     client = anthropic.Anthropic(api_key=api_key)
 
-    parsed_name = parse_name_from_linkedin_url(linkedin_url)
-    name_instruction = (
-        f'The prospect\'s name is "{parsed_name}". Use this exact name in all emails.'
-        if parsed_name
-        else "The prospect's name could not be determined from the URL. Use the LinkedIn slug to infer it as best you can."
-    )
+    # Try Proxycurl enrichment first, fall back to URL slug parsing
+    profile = None
+    if proxycurl_api_key:
+        profile = fetch_linkedin_profile(linkedin_url, proxycurl_api_key)
+
+    if profile:
+        prospect_context = f"""PROSPECT PROFILE (from LinkedIn):
+{_build_profile_context(profile)}"""
+    else:
+        parsed_name = parse_name_from_linkedin_url(linkedin_url)
+        if parsed_name:
+            prospect_context = f'The prospect\'s name is "{parsed_name}" (extracted from LinkedIn URL). Infer their title and role as best you can.'
+        else:
+            prospect_context = "The prospect's name could not be determined. Use the LinkedIn slug to infer it as best you can."
 
     user_prompt = f"""I need you to generate a 6-email NetSuite outreach sequence for a prospect.
 
-Here are the only two inputs I have:
 - LinkedIn Profile URL: {linkedin_url}
 - Company Website URL: {company_url}
 
-{name_instruction}
+{prospect_context}
 
-Based on the URLs, infer what you can about:
-- The prospect's title and role
+Based on the above, infer anything else you can about:
 - The company name, industry, size, and what they do (extract from domain)
 - Likely pain points that NetSuite could solve for this type of company/role
+
+Use the prospect's EXACT name as provided in all emails.
 
 Then generate a personalized 6-email outreach sequence.
 

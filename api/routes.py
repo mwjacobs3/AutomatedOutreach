@@ -19,11 +19,14 @@ def generate_cadence(request: ProspectRequest):
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
 
+    proxycurl_api_key = os.getenv("PROXYCURL_API_KEY", "")
+
     try:
         result = generate_email_sequence_from_urls(
             linkedin_url=request.linkedin_url,
             company_url=request.company_url,
             api_key=api_key,
+            proxycurl_api_key=proxycurl_api_key,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email generation failed: {e}")
