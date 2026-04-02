@@ -6,7 +6,7 @@ import os
 import anthropic
 import streamlit as st
 
-from src.linkedin_analyzer import analyze_linkedin_profile, build_profile_context_block
+from src.linkedin_analyzer import analyze_from_url, build_profile_context_block
 
 # --- Optional Supabase integration ---
 try:
@@ -282,88 +282,72 @@ if not api_key:
 # --- Supabase client ---
 sb = get_supabase_client()
 
-# --- LinkedIn Profile Analysis (outside the form) ---
+# --- Prospect Info & LinkedIn Analysis (outside form) ---
 st.markdown(
     """<div style="background:#fff;border:1.5px solid #d1d5db;border-radius:12px;
     padding:1.5rem;margin-bottom:0.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
-    <p style="font-weight:600;font-size:1.05rem;margin-bottom:0.25rem;color:#374151">
-    LinkedIn Profile Analysis</p>
-    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:0.75rem">
-    Paste the prospect's LinkedIn profile content below for AI-powered role analysis.
-    Copy everything you can — headline, about section, experience, education, skills.</p>
-    </div>""",
+    <p style="font-weight:600;font-size:1.05rem;margin-bottom:0.75rem;color:#374151">
+    Prospect Info</p></div>""",
     unsafe_allow_html=True,
 )
+col1, col2 = st.columns(2)
+with col1:
+    linkedin_url = st.text_input(
+        "LinkedIn Profile URL *",
+        placeholder="https://linkedin.com/in/jane-doe",
+    )
+with col2:
+    company_url = st.text_input(
+        "Company Website URL *",
+        placeholder="https://acmecorp.com",
+    )
 
-linkedin_profile_text = st.text_area(
-    "Paste LinkedIn profile content here",
-    height=180,
-    placeholder=(
-        "Jane Doe\n"
-        "CFO at Acme Corp | Scaling Finance Teams | Ex-Deloitte\n\n"
-        "About: 15+ years leading finance transformation at mid-market companies...\n\n"
-        "Experience:\n"
-        "CFO — Acme Corp (2022–Present)\n"
-        "VP Finance — WidgetCo (2018–2022)\n..."
-    ),
-    label_visibility="collapsed",
-)
-
-# Analyze button + results display
-if linkedin_profile_text and linkedin_profile_text.strip():
-    if st.button("Analyze Profile", type="secondary"):
-        with st.spinner("Analyzing LinkedIn profile..."):
+# --- Analyze Profile button ---
+if linkedin_url and "linkedin.com/in/" in linkedin_url:
+    if st.button("Analyze LinkedIn Profile", type="secondary"):
+        with st.spinner("Searching for public profile data and analyzing..."):
             try:
-                analysis = analyze_linkedin_profile(linkedin_profile_text, api_key)
+                analysis = analyze_from_url(linkedin_url, api_key)
                 st.session_state["linkedin_analysis"] = analysis
+            except ValueError as e:
+                st.warning(str(e))
             except Exception as e:
                 st.error(f"Profile analysis failed: {e}")
 
-    if "linkedin_analysis" in st.session_state:
-        analysis = st.session_state["linkedin_analysis"]
-        with st.expander("Profile Analysis Results", expanded=True):
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown(f"**{analysis.get('name', 'Unknown')}** — {analysis.get('title', '')}")
-                st.markdown(f"*{analysis.get('role_summary', '')}*")
-                st.markdown(f"**Seniority:** {analysis.get('seniority_level', 'N/A')} · **Decision Role:** {analysis.get('decision_role', 'N/A')}")
-                st.markdown(f"**Career:** {analysis.get('career_trajectory', 'N/A')} · **Time in Role:** {analysis.get('years_in_role', 'N/A')}")
-            with col_b:
-                st.markdown("**Top Pain Points:**")
-                for pp in analysis.get("top_pain_points", []):
-                    st.markdown(f"- {pp}")
-                st.markdown(f"**Recommended Tone:** {analysis.get('recommended_tone', 'N/A')}")
-                st.markdown(f"**Best Angle:** {analysis.get('recommended_angle', 'N/A')}")
-            if analysis.get("messaging_hooks"):
-                st.markdown("**Messaging Hooks:**")
-                for hook in analysis["messaging_hooks"]:
-                    st.markdown(f"- {hook}")
+# --- Display analysis results ---
+if "linkedin_analysis" in st.session_state:
+    analysis = st.session_state["linkedin_analysis"]
+    confidence = analysis.get("data_confidence", "Unknown")
+    confidence_color = {"High": "#16a34a", "Medium": "#d97706", "Low": "#dc2626"}.get(confidence, "#6b7280")
+
+    with st.expander("LinkedIn Profile Analysis", expanded=True):
+        st.markdown(
+            f'<span style="background:{confidence_color};color:white;padding:2px 8px;'
+            f'border-radius:8px;font-size:0.75rem;font-weight:600">'
+            f'Data Confidence: {confidence}</span>',
+            unsafe_allow_html=True,
+        )
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown(f"**{analysis.get('name', 'Unknown')}** — {analysis.get('title', '')}")
+            st.markdown(f"*{analysis.get('role_summary', '')}*")
+            st.markdown(f"**Seniority:** {analysis.get('seniority_level', 'N/A')} · **Decision Role:** {analysis.get('decision_role', 'N/A')}")
+            st.markdown(f"**Career:** {analysis.get('career_trajectory', 'N/A')} · **Time in Role:** {analysis.get('years_in_role', 'N/A')}")
+        with col_b:
+            st.markdown("**Top Pain Points:**")
+            for pp in analysis.get("top_pain_points", []):
+                st.markdown(f"- {pp}")
+            st.markdown(f"**Recommended Tone:** {analysis.get('recommended_tone', 'N/A')}")
+            st.markdown(f"**Best Angle:** {analysis.get('recommended_angle', 'N/A')}")
+        if analysis.get("messaging_hooks"):
+            st.markdown("**Messaging Hooks:**")
+            for hook in analysis["messaging_hooks"]:
+                st.markdown(f"- {hook}")
 
 st.markdown("")  # spacer
 
-# --- Input form ---
+# --- Input form (targeting options + generate button) ---
 with st.form("prospect_form"):
-    # ── Primary box: required fields ──
-    st.markdown(
-        """<div style="background:#fff;border:1.5px solid #d1d5db;border-radius:12px;
-        padding:1.5rem;margin-bottom:0.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
-        <p style="font-weight:600;font-size:1.05rem;margin-bottom:0.75rem;color:#374151">
-        Prospect Info</p></div>""",
-        unsafe_allow_html=True,
-    )
-    col1, col2 = st.columns(2)
-    with col1:
-        linkedin_url = st.text_input(
-            "LinkedIn Profile URL *",
-            placeholder="https://linkedin.com/in/jane-doe",
-        )
-    with col2:
-        company_url = st.text_input(
-            "Company Website URL *",
-            placeholder="https://acmecorp.com",
-        )
-
-    st.markdown("")  # spacer
 
     # ── Optional: Personalization Options ──
     with st.expander("Personalization Options  *(optional — increase targeting accuracy)*"):
