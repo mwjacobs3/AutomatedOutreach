@@ -6,6 +6,141 @@ import os
 import anthropic
 import streamlit as st
 
+# ---------------------------------------------------------------------------
+# Industry / Subindustry taxonomy (NetSuite-relevant verticals)
+# ---------------------------------------------------------------------------
+
+INDUSTRIES = {
+    "Manufacturing": [
+        "Discrete Manufacturing",
+        "Process Manufacturing",
+        "Contract Manufacturing",
+        "Industrial Equipment & Machinery",
+        "Automotive Parts & Accessories",
+        "Electronics & High-Tech Manufacturing",
+        "Plastics, Rubber & Packaging",
+        "Aerospace & Defense",
+        "Chemicals",
+        "Other Manufacturing",
+    ],
+    "Wholesale & Distribution": [
+        "General Wholesale",
+        "Industrial & Building Materials",
+        "Food & Beverage Distribution",
+        "Electronics & Components Distribution",
+        "Medical & Pharmaceutical Distribution",
+        "Automotive Parts Distribution",
+        "Janitorial & Facilities Supplies",
+        "Apparel & Fashion Wholesale",
+        "Other Wholesale & Distribution",
+    ],
+    "Retail & E-Commerce": [
+        "Direct-to-Consumer (DTC)",
+        "Omnichannel Retail",
+        "Apparel & Fashion",
+        "Health & Beauty",
+        "Home Goods & Furniture",
+        "Sporting Goods & Outdoor",
+        "Electronics & Consumer Tech",
+        "Subscription & Membership",
+        "Marketplace Seller (Amazon, Shopify)",
+        "Other Retail & E-Commerce",
+    ],
+    "Software & Technology": [
+        "SaaS / Cloud Software",
+        "IT Services & Consulting",
+        "Managed Services Provider (MSP)",
+        "Cybersecurity",
+        "Hardware / IoT",
+        "Fintech",
+        "HealthTech / MedTech",
+        "AdTech / MarTech",
+        "AI / Machine Learning",
+        "Other Software & Technology",
+    ],
+    "Professional Services": [
+        "Consulting (Management / Strategy)",
+        "Accounting & CPA Firms",
+        "Legal Services",
+        "Marketing & Advertising Agencies",
+        "Architecture & Engineering",
+        "Staffing & Recruiting",
+        "IT Professional Services",
+        "Research & Advisory",
+        "Other Professional Services",
+    ],
+    "Financial Services": [
+        "Banking & Lending",
+        "Insurance",
+        "Investment Management & PE/VC",
+        "Payments & Processing",
+        "Wealth Management",
+        "Commercial Real Estate Finance",
+        "Fintech (see also Software & Technology)",
+        "Other Financial Services",
+    ],
+    "Healthcare & Life Sciences": [
+        "Medical Devices & Equipment",
+        "Pharmaceuticals",
+        "Biotech & Life Sciences",
+        "Healthcare Services & Clinics",
+        "Health & Wellness Products",
+        "Home Health & Senior Care",
+        "Dental & Vision",
+        "Other Healthcare & Life Sciences",
+    ],
+    "Food & Beverage": [
+        "Food Manufacturing & CPG",
+        "Beverage & Brewing",
+        "Restaurants & Food Service",
+        "Specialty & Organic Foods",
+        "Agriculture & Farming",
+        "Pet Food & Animal Nutrition",
+        "Other Food & Beverage",
+    ],
+    "Nonprofit & Education": [
+        "Nonprofit / NGO",
+        "Higher Education",
+        "K-12 Education",
+        "EdTech",
+        "Foundations & Grantmaking",
+        "Other Nonprofit & Education",
+    ],
+    "Media & Publishing": [
+        "Digital Media & Content",
+        "Publishing & Print",
+        "Advertising & Entertainment",
+        "Gaming",
+        "Sports & Events",
+        "Other Media & Publishing",
+    ],
+    "Energy & Utilities": [
+        "Oil & Gas",
+        "Renewable Energy & Solar",
+        "Utilities",
+        "Mining & Natural Resources",
+        "Environmental Services",
+        "Other Energy & Utilities",
+    ],
+    "Construction & Real Estate": [
+        "General Contracting",
+        "Specialty Trade Contractors (HVAC, Electrical, Plumbing)",
+        "Commercial Real Estate / Property Management",
+        "Residential Construction & Development",
+        "Building Materials & Supplies",
+        "Other Construction & Real Estate",
+    ],
+    "Transportation & Logistics": [
+        "Freight & Trucking",
+        "Third-Party Logistics (3PL)",
+        "Warehousing & Fulfillment",
+        "Shipping & Maritime",
+        "Aviation & Airlines",
+        "Last-Mile Delivery",
+        "Other Transportation & Logistics",
+    ],
+}
+
 # --- Optional Supabase integration ---
 try:
     from supabase import create_client
@@ -53,7 +188,7 @@ SEQUENCE_STRATEGY = """You are a real salesperson who writes like a human being,
 
 Your job is to write a 6-email outreach sequence for a NetSuite prospect. These emails need to sound like they were typed quickly by a busy sales rep who genuinely wants to help, not crafted by a marketing team.
 
-Here's what makes your emails feel real:
+WRITING STYLE:
 - Short sentences. Fragments are fine.
 - No em dashes. Use commas, periods, or just start a new sentence.
 - Never start with "I hope this finds you well" or "I wanted to reach out" or "I came across your profile"
@@ -66,28 +201,39 @@ Here's what makes your emails feel real:
 - No exclamation marks in subject lines
 - Subject lines should be lowercase, 3-6 words, look like a real person wrote them
 
-Each email has a purpose:
+INDUSTRY EXPERTISE:
+When given an industry and subindustry, you MUST write like someone who actually knows that specific vertical. This means:
+- Use the terminology people in that industry actually use (not generic business speak)
+- Reference real challenges, metrics, and processes specific to that subindustry
+- Mention the types of systems, workflows, and pain points that are unique to their world
+- Name specific scenarios that a person in their role at that type of company would instantly recognize
+- If they're in food manufacturing, talk about lot traceability and FSMA compliance, not "operational efficiency"
+- If they're in wholesale distribution, talk about pick/pack/ship accuracy and vendor chargebacks, not "improving processes"
+- If they're in SaaS, talk about ASC 606, deferred revenue, and cohort metrics, not "financial visibility"
+- The more specific you are to their actual day-to-day, the more real the email sounds
+
+EMAIL SEQUENCE:
 
 Email 1, "Relevant Opener" (Day 1)
-- Mention something specific about their role or company
-- Connect it to a real problem NetSuite solves
+- Mention something specific to their role and industry
+- Connect it to a real problem NetSuite solves for companies like theirs
 - End with a question
 - 3-4 sentences
 
 Email 2, "Value Drop" (Day 3)
-- Share a useful stat or quick story about a similar company
-- No selling, just be helpful
+- Share a stat, benchmark, or quick story relevant to their specific subindustry
+- No selling, just be helpful and knowledgeable about their world
 - 3-4 sentences
 
 Email 3, "Pain Agitator" (Day 7)
-- Name a specific problem companies like theirs deal with
-- Talk about what it actually costs them (time, money, headaches)
+- Name a specific industry problem using their language
+- Talk about what it actually costs them (time, money, headaches, compliance risk)
 - Mention how NetSuite helps without being a brochure
 - 4-5 sentences
 
 Email 4, "Social Proof" (Day 10)
-- Lead with a real-sounding result from a similar company
-- Use specific numbers
+- Lead with a result from a similar company in their industry
+- Use specific numbers and industry-relevant metrics
 - Ask if they'd want to see how it could work for them
 - 3-4 sentences
 
@@ -98,17 +244,18 @@ Email 5, "Breakup Tease" (Day 14)
 - 2-3 sentences
 
 Email 6, "Final Value Add" (Day 21)
-- Share something genuinely useful (a report, checklist, article)
+- Share something genuinely useful for their industry (a report, benchmark, checklist)
 - Zero pressure
 - Leave the door open
 - 2-3 sentences
 
 CRITICAL RULES:
-- NO em dashes (--) anywhere. Not in emails, not in subject lines. Use periods or commas instead.
+- NO em dashes anywhere. Not in emails, not in subject lines. Use periods or commas instead.
 - Every email must read like a different person could have written it. Don't repeat structures.
 - Use their first name once, naturally. Don't force it.
 - Each email stands alone. The prospect may not have read the others.
 - Include sender signature info if provided.
+- If industry and subindustry are provided, EVERY email must contain at least one reference specific to that vertical. Generic emails are a failure.
 """
 
 
@@ -117,9 +264,10 @@ def generate_sequence(
     prospect_name: str,
     prospect_role: str,
     company_name: str,
+    industry: str = "",
+    subindustry: str = "",
     company_url: str = "",
     pain_point: str = "",
-    industry: str = "",
     tone: str = "Conversational",
     sender_name: str = "",
     sender_title: str = "",
@@ -134,10 +282,12 @@ def generate_sequence(
         f"- Role: {prospect_role}",
         f"- Company: {company_name}",
     ]
-    if company_url:
-        context_lines.append(f"- Company website: {company_url}")
     if industry:
         context_lines.append(f"- Industry: {industry}")
+    if subindustry:
+        context_lines.append(f"- Subindustry: {subindustry}")
+    if company_url:
+        context_lines.append(f"- Company website: {company_url}")
     if pain_point:
         context_lines.append(f"- Primary pain point: {pain_point}")
 
@@ -164,7 +314,7 @@ PROSPECT:
 {context_block}
 {tone_instruction}{sender_block}
 
-Make every email feel like it was written by a real person who did 5 minutes of research, not by AI. No em dashes anywhere.
+Make every email feel like it was written by a real person who knows their industry inside and out. Use terminology and references that someone in their specific subindustry would immediately recognize. No em dashes anywhere. No generic business language.
 
 Return your response as a JSON object with this exact structure:
 {{
@@ -304,7 +454,7 @@ with st.form("prospect_form"):
         ])
     with col4:
         pain_point = st.selectbox("Pain Point", [
-            "General (auto-detect based on role)",
+            "General (auto-detect based on role and industry)",
             "Outgrowing QuickBooks or entry-level accounting software",
             "Manual processes and too much data entry",
             "No real-time visibility into financials",
@@ -315,33 +465,27 @@ with st.form("prospect_form"):
             "Revenue recognition compliance concerns",
             "Scaling the business but systems can't keep up",
             "Preparing for audit, IPO, or investor scrutiny",
+            "Compliance and regulatory requirements",
+            "Order management complexity",
         ])
 
+    st.markdown("##### Industry")
+    col5, col6 = st.columns(2)
+    with col5:
+        industry_list = list(INDUSTRIES.keys())
+        industry = st.selectbox("Industry *", industry_list)
+    with col6:
+        subindustry_options = INDUSTRIES.get(industry, [])
+        subindustry = st.selectbox("Subindustry", subindustry_options)
+
     with st.expander("Optional"):
-        col5, col6 = st.columns(2)
-        with col5:
+        col7, col8 = st.columns(2)
+        with col7:
             company_url = st.text_input(
                 "Company Website",
                 placeholder="https://acmecorp.com",
             )
-            industry = st.selectbox("Industry", [
-                "",
-                "Manufacturing",
-                "Wholesale & Distribution",
-                "Retail & E-Commerce",
-                "Software & Technology",
-                "Professional Services",
-                "Financial Services",
-                "Healthcare & Life Sciences",
-                "Food & Beverage",
-                "Nonprofit",
-                "Media & Publishing",
-                "Energy & Utilities",
-                "Construction & Real Estate",
-                "Transportation & Logistics",
-                "Education",
-            ])
-        with col6:
+        with col8:
             tone = st.selectbox("Email Tone", [
                 "Conversational",
                 "Professional / Formal",
@@ -349,17 +493,16 @@ with st.form("prospect_form"):
                 "Executive / Direct",
                 "Consultative / Advisory",
             ])
-            st.markdown("")
 
         st.markdown("##### Sender Info")
-        col7, col8, col9, col10 = st.columns(4)
-        with col7:
-            sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
-        with col8:
-            sender_title = st.text_input("Your Title", placeholder="Account Executive")
+        col9, col10, col11, col12 = st.columns(4)
         with col9:
-            sender_company = st.text_input("Your Company", placeholder="NetSuite")
+            sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
         with col10:
+            sender_title = st.text_input("Your Title", placeholder="Account Executive")
+        with col11:
+            sender_company = st.text_input("Your Company", placeholder="NetSuite")
+        with col12:
             sender_email = st.text_input("Your Email", placeholder="mjacobs@netsuite.com")
 
     submitted = st.form_submit_button("Generate Touch Plan", type="primary")
@@ -371,16 +514,17 @@ if submitted:
     else:
         with st.spinner("Generating your 6-email touch plan..."):
             try:
-                pain = pain_point if pain_point != "General (auto-detect based on role)" else ""
+                pain = pain_point if pain_point != "General (auto-detect based on role and industry)" else ""
 
                 result = generate_sequence(
                     api_key=api_key,
                     prospect_name=prospect_name,
                     prospect_role=prospect_role,
                     company_name=company_name,
+                    industry=industry,
+                    subindustry=subindustry,
                     company_url=company_url,
                     pain_point=pain,
-                    industry=industry,
                     tone=tone,
                     sender_name=sender_name,
                     sender_title=sender_title,
