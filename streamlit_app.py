@@ -6,6 +6,8 @@ import os
 import anthropic
 import streamlit as st
 
+from src.linkedin_analyzer import analyze_linkedin_profile, build_profile_context_block
+
 # --- Optional Supabase integration ---
 try:
     from supabase import create_client
@@ -119,6 +121,7 @@ def generate_sequence(
     sender_title: str = "",
     sender_company: str = "",
     sender_email: str = "",
+    linkedin_profile_context: str = "",
 ) -> dict:
     """Generate a 6-email personalized touch plan with context parameters."""
     client = anthropic.Anthropic(api_key=api_key)
@@ -142,6 +145,11 @@ def generate_sequence(
     if context_lines:
         context_block = "\n\nADDITIONAL CONTEXT (use this to sharpen personalization):\n" + "\n".join(context_lines)
 
+    # LinkedIn profile analysis block (rich insights from pasted profile)
+    profile_block = ""
+    if linkedin_profile_context:
+        profile_block = f"\n\n{linkedin_profile_context}\n\nIMPORTANT: Use the LinkedIn profile analysis above as your PRIMARY source for personalization. Reference specific details from their profile naturally — their role, career trajectory, pain points, and messaging hooks. The profile analysis has already identified the best outreach angle and tone."
+
     tone_instruction = ""
     if tone and tone != "Conversational":
         tone_instruction = f"\n\nTONE: Write in a {tone.lower()} tone throughout all emails."
@@ -162,8 +170,7 @@ def generate_sequence(
 PROSPECT INPUTS:
 - LinkedIn Profile URL: {linkedin_url}
 - Company Website URL: {company_url}
-
-Based on the URLs, infer what you can about the prospect's name, title, role, company name, industry, and what they do.{context_block}{tone_instruction}{sender_block}
+{profile_block}{context_block}{tone_instruction}{sender_block}
 
 Generate a personalized 6-email outreach sequence that feels specific to THIS person and company.
 
@@ -274,6 +281,65 @@ if not api_key:
 
 # --- Supabase client ---
 sb = get_supabase_client()
+
+# --- LinkedIn Profile Analysis (outside the form) ---
+st.markdown(
+    """<div style="background:#fff;border:1.5px solid #d1d5db;border-radius:12px;
+    padding:1.5rem;margin-bottom:0.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+    <p style="font-weight:600;font-size:1.05rem;margin-bottom:0.25rem;color:#374151">
+    LinkedIn Profile Analysis</p>
+    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:0.75rem">
+    Paste the prospect's LinkedIn profile content below for AI-powered role analysis.
+    Copy everything you can — headline, about section, experience, education, skills.</p>
+    </div>""",
+    unsafe_allow_html=True,
+)
+
+linkedin_profile_text = st.text_area(
+    "Paste LinkedIn profile content here",
+    height=180,
+    placeholder=(
+        "Jane Doe\n"
+        "CFO at Acme Corp | Scaling Finance Teams | Ex-Deloitte\n\n"
+        "About: 15+ years leading finance transformation at mid-market companies...\n\n"
+        "Experience:\n"
+        "CFO — Acme Corp (2022–Present)\n"
+        "VP Finance — WidgetCo (2018–2022)\n..."
+    ),
+    label_visibility="collapsed",
+)
+
+# Analyze button + results display
+if linkedin_profile_text and linkedin_profile_text.strip():
+    if st.button("Analyze Profile", type="secondary"):
+        with st.spinner("Analyzing LinkedIn profile..."):
+            try:
+                analysis = analyze_linkedin_profile(linkedin_profile_text, api_key)
+                st.session_state["linkedin_analysis"] = analysis
+            except Exception as e:
+                st.error(f"Profile analysis failed: {e}")
+
+    if "linkedin_analysis" in st.session_state:
+        analysis = st.session_state["linkedin_analysis"]
+        with st.expander("Profile Analysis Results", expanded=True):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown(f"**{analysis.get('name', 'Unknown')}** — {analysis.get('title', '')}")
+                st.markdown(f"*{analysis.get('role_summary', '')}*")
+                st.markdown(f"**Seniority:** {analysis.get('seniority_level', 'N/A')} · **Decision Role:** {analysis.get('decision_role', 'N/A')}")
+                st.markdown(f"**Career:** {analysis.get('career_trajectory', 'N/A')} · **Time in Role:** {analysis.get('years_in_role', 'N/A')}")
+            with col_b:
+                st.markdown("**Top Pain Points:**")
+                for pp in analysis.get("top_pain_points", []):
+                    st.markdown(f"- {pp}")
+                st.markdown(f"**Recommended Tone:** {analysis.get('recommended_tone', 'N/A')}")
+                st.markdown(f"**Best Angle:** {analysis.get('recommended_angle', 'N/A')}")
+            if analysis.get("messaging_hooks"):
+                st.markdown("**Messaging Hooks:**")
+                for hook in analysis["messaging_hooks"]:
+                    st.markdown(f"- {hook}")
+
+st.markdown("")  # spacer
 
 # --- Input form ---
 with st.form("prospect_form"):
@@ -419,6 +485,11 @@ if submitted:
     else:
         with st.spinner("Generating your personalized 6-email touch plan..."):
             try:
+                # Build LinkedIn profile context if analysis exists
+                profile_context = ""
+                if "linkedin_analysis" in st.session_state:
+                    profile_context = build_profile_context_block(st.session_state["linkedin_analysis"])
+
                 result = generate_sequence(
                     linkedin_url=linkedin_url,
                     company_url=company_url,
@@ -434,6 +505,7 @@ if submitted:
                     sender_title=sender_title,
                     sender_company=sender_company,
                     sender_email=sender_email,
+                    linkedin_profile_context=profile_context,
                 )
                 st.session_state["result"] = result
                 st.session_state["linkedin_url"] = linkedin_url
@@ -491,7 +563,7 @@ if "result" in st.session_state:
 
     st.markdown("---")
     if st.button("Start New Touch Plan"):
-        for key in ["result", "linkedin_url", "company_url"]:
+        for key in ["result", "linkedin_url", "company_url", "linkedin_analysis"]:
             st.session_state.pop(key, None)
         st.rerun()
 
