@@ -424,6 +424,16 @@ if not api_key:
 # --- Supabase client ---
 sb = get_supabase_client()
 
+# --- Industry selection (outside form so subindustry updates dynamically) ---
+st.markdown("##### Industry")
+col_ind1, col_ind2 = st.columns(2)
+with col_ind1:
+    industry_list = list(INDUSTRIES.keys())
+    industry = st.selectbox("Industry *", industry_list)
+with col_ind2:
+    subindustry_options = INDUSTRIES.get(industry, [])
+    subindustry = st.selectbox("Subindustry", subindustry_options)
+
 # --- Input form ---
 with st.form("prospect_form"):
     st.markdown("##### Prospect")
@@ -468,15 +478,6 @@ with st.form("prospect_form"):
             "Compliance and regulatory requirements",
             "Order management complexity",
         ])
-
-    st.markdown("##### Industry")
-    col5, col6 = st.columns(2)
-    with col5:
-        industry_list = list(INDUSTRIES.keys())
-        industry = st.selectbox("Industry *", industry_list)
-    with col6:
-        subindustry_options = INDUSTRIES.get(industry, [])
-        subindustry = st.selectbox("Subindustry", subindustry_options)
 
     with st.expander("Optional"):
         col7, col8 = st.columns(2)
