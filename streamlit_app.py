@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 
 import anthropic
 import streamlit as st
@@ -334,12 +335,21 @@ Return your response as a JSON object with this exact structure:
 
 Return ONLY the JSON object, no other text."""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4096,
-        system=SEQUENCE_STRATEGY,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4096,
+                system=SEQUENCE_STRATEGY,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            break
+        except anthropic.APIStatusError as e:
+            if e.status_code == 529 and attempt < max_retries - 1:
+                time.sleep(2 ** (attempt + 1))
+                continue
+            raise
 
     response_text = message.content[0].text.strip()
 
