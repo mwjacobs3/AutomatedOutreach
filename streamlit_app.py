@@ -2,9 +2,12 @@
 
 import json
 import os
+import re
 import time
+from html.parser import HTMLParser
 
 import anthropic
+import requests
 import streamlit as st
 
 # ---------------------------------------------------------------------------
@@ -182,6 +185,78 @@ def load_history(client, limit=10):
 
 
 # ---------------------------------------------------------------------------
+# Company website research
+# ---------------------------------------------------------------------------
+
+
+class _TextExtractor(HTMLParser):
+    """Lightweight HTML-to-text extractor using the stdlib."""
+
+    _SKIP_TAGS = {"script", "style", "noscript", "svg", "head"}
+
+    def __init__(self):
+        super().__init__()
+        self._pieces: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in self._SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data):
+        if self._skip_depth == 0:
+            self._pieces.append(data)
+
+    def get_text(self) -> str:
+        raw = " ".join(self._pieces)
+        return re.sub(r"\s+", " ", raw).strip()
+
+
+def scrape_company_page(url: str, timeout: int = 10) -> str:
+    """Fetch a company URL and return extracted text (max ~6 000 chars)."""
+    try:
+        resp = requests.get(
+            url,
+            timeout=timeout,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; AutomatedOutreach/1.0)"},
+        )
+        resp.raise_for_status()
+    except Exception:
+        return ""
+
+    extractor = _TextExtractor()
+    extractor.feed(resp.text)
+    text = extractor.get_text()
+    return text[:6000]
+
+
+def summarize_company(client: anthropic.Anthropic, company_name: str, page_text: str) -> str:
+    """Use Claude to distill raw website text into a concise company profile."""
+    if not page_text or len(page_text) < 50:
+        return ""
+
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        messages=[{
+            "role": "user",
+            "content": f"""Summarize this company's website text into a short research brief for a salesperson.
+Include: what the company does, products/services, target market, approximate size if mentioned, any recent news or initiatives, and technology/tools they mention.
+Be specific and factual. Only include what's actually on the page. 3-5 bullet points max.
+
+Company: {company_name}
+Website text:
+{page_text}""",
+        }],
+    )
+    return msg.content[0].text.strip()
+
+
+# ---------------------------------------------------------------------------
 # Email generation
 # ---------------------------------------------------------------------------
 
@@ -274,6 +349,7 @@ def generate_sequence(
     sender_title: str = "",
     sender_company: str = "",
     sender_email: str = "",
+    company_research: str = "",
 ) -> dict:
     """Generate a 6-email personalized touch plan."""
     client = anthropic.Anthropic(api_key=api_key)
@@ -294,6 +370,15 @@ def generate_sequence(
 
     context_block = "\n".join(context_lines)
 
+    research_block = ""
+    if company_research:
+        research_block = f"""
+
+COMPANY RESEARCH (from their website — use these real details in your emails):
+{company_research}
+
+IMPORTANT: Weave specific details from the research above into the emails naturally. Reference their actual products, services, markets, or initiatives instead of making generic guesses. This is what makes the emails feel like you actually did your homework."""
+
     tone_instruction = ""
     if tone and tone != "Conversational":
         tone_instruction = f"\n\nTONE: Write in a {tone.lower()} tone throughout all emails."
@@ -313,7 +398,7 @@ def generate_sequence(
 
 PROSPECT:
 {context_block}
-{tone_instruction}{sender_block}
+{tone_instruction}{sender_block}{research_block}
 
 Make every email feel like it was written by a real person who knows their industry inside and out. Use terminology and references that someone in their specific subindustry would immediately recognize. No em dashes anywhere. No generic business language.
 
@@ -523,10 +608,20 @@ if submitted:
     if not prospect_name or not company_name:
         st.error("Please fill in the prospect name and company.")
     else:
-        with st.spinner("Generating your 6-email touch plan..."):
-            try:
-                pain = pain_point if pain_point != "General (auto-detect based on role and industry)" else ""
+        try:
+            pain = pain_point if pain_point != "General (auto-detect based on role and industry)" else ""
 
+            # Step 1: Research company website if URL provided
+            company_research = ""
+            if company_url:
+                with st.spinner("Researching company website..."):
+                    page_text = scrape_company_page(company_url)
+                    if page_text:
+                        client = anthropic.Anthropic(api_key=api_key)
+                        company_research = summarize_company(client, company_name, page_text)
+
+            # Step 2: Generate the email sequence
+            with st.spinner("Generating your 6-email touch plan..."):
                 result = generate_sequence(
                     api_key=api_key,
                     prospect_name=prospect_name,
@@ -541,22 +636,23 @@ if submitted:
                     sender_title=sender_title,
                     sender_company=sender_company,
                     sender_email=sender_email,
+                    company_research=company_research,
                 )
                 st.session_state["result"] = result
 
-                # Save to Supabase if available
-                if sb:
-                    try:
-                        save_to_supabase(sb, prospect_name, company_name, result)
-                    except Exception:
-                        pass
+            # Save to Supabase if available
+            if sb:
+                try:
+                    save_to_supabase(sb, prospect_name, company_name, result)
+                except Exception:
+                    pass
 
-            except json.JSONDecodeError:
-                st.error("Failed to parse the AI response. Please try again.")
-            except anthropic.APIError as e:
-                st.error(f"API error: {e.message}")
-            except Exception as e:
-                st.error(f"Something went wrong: {e}")
+        except json.JSONDecodeError:
+            st.error("Failed to parse the AI response. Please try again.")
+        except anthropic.APIError as e:
+            st.error(f"API error: {e.message}")
+        except Exception as e:
+            st.error(f"Something went wrong: {e}")
 
 # --- Display results ---
 if "result" in st.session_state:
