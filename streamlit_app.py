@@ -463,7 +463,7 @@ st.markdown("""
         background: #f8f9fa;
         border-radius: 10px;
         padding: 1.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         border-left: 4px solid #2563eb;
     }
     .email-header {
@@ -471,6 +471,7 @@ st.markdown("""
         gap: 0.5rem;
         margin-bottom: 0.75rem;
         flex-wrap: wrap;
+        align-items: center;
     }
     .badge {
         background: #2563eb;
@@ -496,19 +497,24 @@ st.markdown("""
     }
     .email-body {
         white-space: pre-wrap;
-        line-height: 1.6;
+        line-height: 1.7;
         color: #333;
+        font-size: 0.95rem;
     }
     div.stButton > button[kind="primary"] {
         background-color: #2563eb;
         width: 100%;
+    }
+    .result-header {
+        padding: 0.5rem 0;
+        margin-bottom: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Header ---
 st.title("AutomatedOutreach")
-st.markdown("Generate a personalized 6-email NetSuite outreach sequence.")
+st.caption("AI-powered personalized NetSuite outreach sequences. Fill in the prospect details and get a 6-email touch plan in seconds.")
 
 # --- API key handling ---
 api_key = st.secrets.get("ANTHROPIC_API_KEY", os.environ.get("ANTHROPIC_API_KEY", ""))
@@ -519,45 +525,21 @@ if not api_key:
 # --- Supabase client ---
 sb = get_supabase_client()
 
-# --- Industry selection (outside form so subindustry updates dynamically) ---
-st.markdown("##### Industry")
-col_ind1, col_ind2 = st.columns(2)
-with col_ind1:
-    industry_list = list(INDUSTRIES.keys())
-    industry = st.selectbox("Industry *", industry_list)
-with col_ind2:
-    subindustry_options = INDUSTRIES.get(industry, [])
-    subindustry = st.selectbox("Subindustry", subindustry_options)
+# --- Collapse form when results are showing ---
+_has_result = "result" in st.session_state
+_form_container = st.expander("New Touch Plan", expanded=not _has_result) if _has_result else st.container()
 
-# --- Input form ---
-with st.form("prospect_form"):
-    st.markdown("##### Prospect")
-    col1, col2 = st.columns(2)
-    with col1:
-        prospect_name = st.text_input(
-            "Prospect Name *",
-            placeholder="Jane Doe",
-        )
-    with col2:
-        company_name = st.text_input(
-            "Company *",
-            placeholder="Acme Corp",
-        )
-
-    col3, col4 = st.columns(2)
-    with col3:
-        prospect_role = st.selectbox("Role *", [
-            "CFO / VP Finance",
-            "Controller / Accounting Manager",
-            "CIO / IT Director",
-            "COO / VP Operations",
-            "CEO / Founder / Owner",
-            "Director of Supply Chain",
-            "VP of Sales / Revenue Ops",
-            "Procurement / Purchasing Manager",
-            "Other",
-        ])
-    with col4:
+with _form_container:
+    # Industry selection (outside form so subindustry updates dynamically)
+    st.markdown("##### Industry & Targeting")
+    col_ind1, col_ind2, col_ind3 = st.columns(3)
+    with col_ind1:
+        industry_list = list(INDUSTRIES.keys())
+        industry = st.selectbox("Industry *", industry_list)
+    with col_ind2:
+        subindustry_options = INDUSTRIES.get(industry, [])
+        subindustry = st.selectbox("Subindustry", subindustry_options)
+    with col_ind3:
         pain_point = st.selectbox("Pain Point", [
             "General (auto-detect based on role and industry)",
             "Outgrowing QuickBooks or entry-level accounting software",
@@ -574,14 +556,40 @@ with st.form("prospect_form"):
             "Order management complexity",
         ])
 
-    with st.expander("Optional"):
-        col7, col8 = st.columns(2)
-        with col7:
+    # Input form
+    with st.form("prospect_form"):
+        st.markdown("##### Prospect")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            prospect_name = st.text_input(
+                "Prospect Name *",
+                placeholder="Jane Doe",
+            )
+        with col2:
+            company_name = st.text_input(
+                "Company *",
+                placeholder="Acme Corp",
+            )
+        with col3:
             company_url = st.text_input(
                 "Company Website",
                 placeholder="https://acmecorp.com",
             )
-        with col8:
+
+        col4, col5 = st.columns(2)
+        with col4:
+            prospect_role = st.selectbox("Role *", [
+                "CFO / VP Finance",
+                "Controller / Accounting Manager",
+                "CIO / IT Director",
+                "COO / VP Operations",
+                "CEO / Founder / Owner",
+                "Director of Supply Chain",
+                "VP of Sales / Revenue Ops",
+                "Procurement / Purchasing Manager",
+                "Other",
+            ])
+        with col5:
             tone = st.selectbox("Email Tone", [
                 "Conversational",
                 "Professional / Formal",
@@ -590,18 +598,18 @@ with st.form("prospect_form"):
                 "Consultative / Advisory",
             ])
 
-        st.markdown("##### Sender Info")
-        col9, col10, col11, col12 = st.columns(4)
-        with col9:
-            sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
-        with col10:
-            sender_title = st.text_input("Your Title", placeholder="Account Executive")
-        with col11:
-            sender_company = st.text_input("Your Company", placeholder="NetSuite")
-        with col12:
-            sender_email = st.text_input("Your Email", placeholder="mjacobs@netsuite.com")
+        with st.expander("Sender Info (optional)"):
+            col9, col10, col11, col12 = st.columns(4)
+            with col9:
+                sender_name = st.text_input("Your Name", placeholder="Matt Jacobs")
+            with col10:
+                sender_title = st.text_input("Your Title", placeholder="Account Executive")
+            with col11:
+                sender_company = st.text_input("Your Company", placeholder="NetSuite")
+            with col12:
+                sender_email = st.text_input("Your Email", placeholder="mjacobs@netsuite.com")
 
-    submitted = st.form_submit_button("Generate Touch Plan", type="primary")
+        submitted = st.form_submit_button("Generate Touch Plan", type="primary")
 
 # --- Generation ---
 if submitted:
@@ -683,15 +691,14 @@ if "result" in st.session_state:
             unsafe_allow_html=True,
         )
 
-        # Copy buttons
-        col_subj, col_body, _ = st.columns([1, 1, 2])
-        with col_subj:
+        with st.expander("Copy to clipboard"):
+            st.caption("Subject")
             st.code(subject, language=None)
-        with col_body:
+            st.caption("Body")
             st.code(body, language=None)
 
     st.markdown("---")
-    if st.button("Start New Touch Plan"):
+    if st.button("Clear & Start Over"):
         st.session_state.pop("result", None)
         st.rerun()
 
